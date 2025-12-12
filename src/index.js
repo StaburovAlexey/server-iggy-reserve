@@ -321,9 +321,9 @@ app.post('/tables/add', auth, async (req, res) => {
       [table || null, name || null, person || null, time || null, phone || null, date || null, ownerId]
     );
     const created = await get('SELECT * FROM tables WHERE id = ?', [insert.id]);
-    const notifyText = `Новая бронь: ${created.time || '-'} (${created.date || '-'}
+    const notifyText = `Новая бронь: ${created.time || '-'} (${created.date || '-'})
 Стол: ${created.table || '-'}
-Гость: ${created.name || '-'}
+Имя: ${created.name || '-'}
 Гостей: ${created.person ?? '-'}
 Телефон: ${created.phone || '-'}`;
     await botManager.sendMessage(null, notifyText);
