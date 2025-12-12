@@ -152,12 +152,14 @@ class TelegramBotManager {
     this.bot = null;
     this.token = null;
     this.adminChat = null;
+    this.chatId = null;
   }
 
-  async start(token, adminChat) {
+  async start(token, adminChat, chatId) {
     if (!token) return;
     if (this.bot && this.token === token) {
       this.adminChat = adminChat || this.adminChat;
+      this.chatId = chatId || this.chatId;
       return;
     }
     if (this.bot) {
@@ -165,6 +167,7 @@ class TelegramBotManager {
     }
     this.token = token;
     this.adminChat = adminChat || null;
+    this.chatId = chatId || null;
     this.bot = new TelegramBot(token, { polling: true });
     this.bot.on('message', (msg) => {
       const text = (msg.text || '').toLowerCase();
@@ -181,14 +184,15 @@ class TelegramBotManager {
     this.bot = null;
     this.token = null;
     this.adminChat = null;
+    this.chatId = null;
   }
 
-  async refresh(token, adminChat) {
+  async refresh(token, adminChat, chatId) {
     if (!token) {
       await this.stop();
       return;
     }
-    await this.start(token, adminChat);
+    await this.start(token, adminChat, chatId);
   }
 
   async sendBackup(filePath, caption) {
@@ -199,6 +203,23 @@ class TelegramBotManager {
       });
     } catch (err) {
       console.error('Failed to send backup', err);
+    }
+  }
+
+  async sendMessage(chatId, text) {
+    if (!this.bot) {
+      console.warn('Skip message: bot is not initialized');
+      return;
+    }
+    const target = chatId || this.chatId || this.adminChat;
+    if (!target) {
+      console.warn('Skip message: chat_id is not configured');
+      return;
+    }
+    try {
+      await this.bot.sendMessage(target, text);
+    } catch (err) {
+      console.error('Failed to send Telegram message', err);
     }
   }
 }
@@ -300,6 +321,12 @@ app.post('/tables/add', auth, async (req, res) => {
       [table || null, name || null, person || null, time || null, phone || null, date || null, ownerId]
     );
     const created = await get('SELECT * FROM tables WHERE id = ?', [insert.id]);
+    const notifyText = `Новая бронь: ${created.time || '-'} (${created.date || '-'}
+Стол: ${created.table || '-'}
+Гость: ${created.name || '-'}
+Гостей: ${created.person ?? '-'}
+Телефон: ${created.phone || '-'}`;
+    await botManager.sendMessage(null, notifyText);
     return res.status(201).json(created);
   } catch (err) {
     console.error(err);
@@ -338,7 +365,7 @@ app.post('/settings/add', auth, requireAdmin, async (req, res) => {
       chat_id: chat_id || (existing?.chat_id ? decrypt(existing.chat_id) : null),
       admin_chat: admin_chat || (existing?.admin_chat ? decrypt(existing.admin_chat) : null),
     };
-    await botManager.refresh(response.bot_id, response.admin_chat);
+    await botManager.refresh(response.bot_id, response.admin_chat, response.chat_id);
     return res.json({ settings: response });
   } catch (err) {
     console.error(err);
@@ -485,7 +512,8 @@ async function loadBotFromSettings() {
   const row = await get('SELECT * FROM settings WHERE id = 1');
   const botId = row?.bot_id ? decrypt(row.bot_id) : null;
   const adminChat = row?.admin_chat ? decrypt(row.admin_chat) : null;
-  await botManager.refresh(botId, adminChat);
+  const chatId = row?.chat_id ? decrypt(row.chat_id) : null;
+  await botManager.refresh(botId, adminChat, chatId);
 }
 
 async function start() {
