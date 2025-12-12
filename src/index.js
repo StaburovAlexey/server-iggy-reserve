@@ -265,14 +265,26 @@ app.post('/registration', auth, requireAdmin, async (req, res) => {
 app.get('/tables', auth, async (req, res) => {
   try {
     const dateFilter = (req.query.date || req.query.data || '').trim();
-    let sql = 'SELECT * FROM tables';
+    let sql = `
+      SELECT t.*, u.uuid AS user_uuid, u.name AS user_name, u.login AS user_login, u.avatar AS user_avatar, u.role AS user_role
+      FROM tables t
+      LEFT JOIN users u ON t.user_id = u.uuid
+    `;
     const params = [];
     if (dateFilter) {
-      sql += ' WHERE date = ?';
+      sql += ' WHERE t.date = ?';
       params.push(dateFilter);
     }
     const rows = await all(sql, params);
-    return res.json({ items: rows });
+    const items = rows.map(
+      ({ user_uuid, user_name, user_login, user_avatar, user_role, ...table }) => ({
+        ...table,
+        user: user_uuid
+          ? { uuid: user_uuid, name: user_name, login: user_login, avatar: user_avatar, role: user_role }
+          : null,
+      })
+    );
+    return res.json({ items });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Server error' });
