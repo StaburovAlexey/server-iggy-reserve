@@ -27,8 +27,47 @@ if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
 
 const encryptionKeyBuffer = Buffer.from(ENCRYPTION_KEY, 'hex');
 
+const isProd = process.argv.includes('--prod') || process.env.NODE_ENV === 'production';
+
+function extractHostname(value) {
+  try {
+    return new URL(value).hostname;
+  } catch (_) {
+    try {
+      return new URL(`http://${value}`).hostname;
+    } catch (_inner) {
+      return value;
+    }
+  }
+}
+
+const corsAllowedList = (process.env.CORS_ALLOWED_IPS || '')
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+const allowedCorsHosts = new Set(corsAllowedList.map(extractHostname));
+
+if (isProd && allowedCorsHosts.size === 0) {
+  throw new Error('CORS_ALLOWED_IPS is required when running in production mode (start:prod)');
+}
+
+const corsOptions = isProd
+  ? {
+      origin: (origin, callback) => {
+        if (!origin) {
+          return callback(null, true);
+        }
+        const hostname = extractHostname(origin);
+        if (allowedCorsHosts.has(hostname)) {
+          return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+      },
+    }
+  : undefined;
+
 const app = express();
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -442,8 +481,11 @@ async function start() {
   await ensureDefaultAdmin();
   await loadBotFromSettings();
   setupBackupSchedule();
+  const corsMode = isProd
+    ? `Restricted CORS to hosts: ${Array.from(allowedCorsHosts).join(', ')}`
+    : 'CORS open to all origins';
   app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+    console.log(`Server listening on port ${PORT}. ${corsMode}`);
   });
 }
 

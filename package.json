@@ -4,7 +4,8 @@
   "description": "SQLite-backed Node.js server with auth, file upload, and Telegram bot",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "start:prod": "node src/index.js --prod"
   },
   "keywords": [],
   "author": "",
