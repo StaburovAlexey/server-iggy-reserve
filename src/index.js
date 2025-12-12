@@ -481,6 +481,15 @@ async function start() {
   await ensureDefaultAdmin();
   await loadBotFromSettings();
   setupBackupSchedule();
+  console.log('[BOOT] NODE_ENV:', process.env.NODE_ENV || '<undefined>');
+  console.log('[BOOT] argv:', process.argv.slice(2).join(' ') || '<none>');
+  console.log('[BOOT] isProd:', isProd);
+  console.log(
+    '[BOOT] CORS_ALLOWED_IPS raw:',
+    process.env.CORS_ALLOWED_IPS || '<empty>',
+    'parsed:',
+    Array.from(allowedCorsHosts)
+  );
   const corsMode = isProd
     ? `Restricted CORS to hosts: ${Array.from(allowedCorsHosts).join(', ')}`
     : 'CORS open to all origins';
