@@ -171,12 +171,17 @@ class TelegramBotManager {
     );
 
     const cleanUrl = serverUrl?.replace(/\/api\/?$/i, '');
-    const linkLine = cleanUrl ? `Открыть приложение: ${cleanUrl}` : null;
+    const replyOptions = cleanUrl
+      ? {
+          reply_markup: {
+            inline_keyboard: [[{ text: 'Открыть приложение', url: cleanUrl }]],
+          },
+        }
+      : undefined;
 
     if (!bookings.length) {
       const parts = [`Брони на сегодня (${date}) отсутствуют.`];
-      if (linkLine) parts.push(linkLine);
-      await this.bot.sendMessage(msg.chat.id, parts.join('\n'));
+      await this.bot.sendMessage(msg.chat.id, parts.join('\n'), replyOptions);
       return;
     }
 
@@ -188,8 +193,7 @@ class TelegramBotManager {
     });
 
     const textParts = [`Брони на сегодня (${date}):`, ...lines];
-    if (linkLine) textParts.push(linkLine);
-    await this.bot.sendMessage(msg.chat.id, textParts.join('\n'));
+    await this.bot.sendMessage(msg.chat.id, textParts.join('\n'), replyOptions);
   }
 }
 
