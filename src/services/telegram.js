@@ -102,30 +102,33 @@ class TelegramBotManager {
     const code = parts[1];
 
     if (!code) {
-      await this.bot.sendMessage(msg.chat.id, 'Send /link <code> from the app to connect this chat.');
+      await this.bot.sendMessage(msg.chat.id, 'Отправьте /link <код> из приложения, чтобы привязать чат.');
       return;
     }
 
     const result = await consumeLinkCode(code, msg.chat.id);
     if (!result.ok) {
       const errorMessages = {
-        expired: 'Link code expired. Generate a new one in the app.',
-        used: 'Link code was already used. Generate a new one in the app.',
-        not_found: 'Link code is invalid. Check the code and try again.',
-        stale: 'Link code is no longer valid. Generate a new one in the app.',
-        code_required: 'Link code is required. Send /link <code>.',
+        expired: 'Код привязки истёк. Сгенерируйте новый в приложении.',
+        used: 'Код привязки уже использован. Сгенерируйте новый в приложении.',
+        not_found: 'Код привязки недействителен. Проверьте код и попробуйте снова.',
+        stale: 'Код привязки больше недействителен. Сгенерируйте новый в приложении.',
+        code_required: 'Нужен код привязки. Отправьте /link <код>.',
       };
-      const reply = errorMessages[result.error] || 'Link code is invalid. Generate a new one in the app.';
+      const reply = errorMessages[result.error] || 'Код привязки недействителен. Сгенерируйте новый в приложении.';
       await this.bot.sendMessage(msg.chat.id, reply);
       return;
     }
 
     try {
       await this.saveChatId(msg.chat.id);
-      await this.bot.sendMessage(msg.chat.id, 'Chat linked. Notifications will be sent here.');
+      await this.bot.sendMessage(msg.chat.id, 'Чат привязан. Уведомления будут приходить сюда.');
     } catch (err) {
-      console.error('Failed to save chat_id after /link', err);
-      await this.bot.sendMessage(msg.chat.id, 'Link code accepted, but saving chat_id failed. Try again.');
+      console.error('Не удалось сохранить chat_id после /link', err);
+      await this.bot.sendMessage(
+        msg.chat.id,
+        'Код принят, но сохранить chat_id не удалось. Попробуйте ещё раз.'
+      );
     }
   }
 

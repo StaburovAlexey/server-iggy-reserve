@@ -27,7 +27,7 @@ async function createLinkCode() {
     }
   }
   if (!code) {
-    throw new Error('Failed to generate link code');
+    throw new Error('Не удалось сгенерировать код привязки');
   }
 
   const createdAt = new Date();

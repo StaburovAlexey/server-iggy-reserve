@@ -8,18 +8,21 @@ function registerSettingsRoutes(app, { botManager }) {
     try {
       const { bot_id, chat_id, admin_chat } = req.body;
       const existing = await get('SELECT * FROM settings WHERE id = 1');
-      const updatedBot = bot_id ? encrypt(bot_id) : existing?.bot_id || null;
-      const updatedChat = chat_id ? encrypt(chat_id) : existing?.chat_id || null;
-      const updatedAdmin = admin_chat ? encrypt(admin_chat) : existing?.admin_chat || null;
+      const updatedBot =
+        bot_id === undefined ? existing?.bot_id || null : bot_id === null ? null : encrypt(bot_id);
+      const updatedChat =
+        chat_id === undefined ? existing?.chat_id || null : chat_id === null ? null : encrypt(chat_id);
+      const updatedAdmin =
+        admin_chat === undefined ? existing?.admin_chat || null : admin_chat === null ? null : encrypt(admin_chat);
       await run('UPDATE settings SET bot_id = ?, chat_id = ?, admin_chat = ? WHERE id = 1', [
         updatedBot,
         updatedChat,
         updatedAdmin,
       ]);
       const response = {
-        bot_id: bot_id || (existing?.bot_id ? decrypt(existing.bot_id) : null),
-        chat_id: chat_id || (existing?.chat_id ? decrypt(existing.chat_id) : null),
-        admin_chat: admin_chat || (existing?.admin_chat ? decrypt(existing.admin_chat) : null),
+        bot_id: bot_id !== undefined ? bot_id : existing?.bot_id ? decrypt(existing.bot_id) : null,
+        chat_id: chat_id !== undefined ? chat_id : existing?.chat_id ? decrypt(existing.chat_id) : null,
+        admin_chat: admin_chat !== undefined ? admin_chat : existing?.admin_chat ? decrypt(existing.admin_chat) : null,
       };
       await botManager.refresh(response.bot_id, response.admin_chat, response.chat_id);
       return res.json({ settings: response });
@@ -34,7 +37,7 @@ function registerSettingsRoutes(app, { botManager }) {
       const row = await get('SELECT bot_id FROM settings WHERE id = 1');
       const botToken = row?.bot_id ? decrypt(row.bot_id) : null;
       if (!botToken) {
-        return res.status(400).json({ error: 'Configure bot_id before creating a link code' });
+        return res.status(400).json({ error: 'Сначала укажите bot_id, чтобы создать код привязки' });
       }
       const { code, expires_at } = await createLinkCode();
       return res.json({ code, expires_at, ttl_minutes: CODE_TTL_MINUTES });
