@@ -1,6 +1,6 @@
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
-const { run } = require('../db');
+const { run, all } = require('../db');
 const { encrypt } = require('../utils/encryption');
 const { consumeLinkCode } = require('./link-codes');
 
@@ -26,6 +26,7 @@ class TelegramBotManager {
     this.adminChat = adminChat ? String(adminChat) : null;
     this.chatId = chatId ? String(chatId) : null;
     this.bot = new TelegramBot(token, { polling: true });
+    await this.registerCommands();
     this.bot.on('message', async (msg) => {
       try {
         await this.handleMessage(msg);
@@ -81,13 +82,29 @@ class TelegramBotManager {
     }
   }
 
+  async registerCommands() {
+    if (!this.bot) return;
+    const commands = [{ command: 'booking', description: 'Список броней на сегодня' }];
+    try {
+      await this.bot.setMyCommands(commands, { scope: { type: 'all_private_chats' } });
+      await this.bot.setMyCommands(commands, { scope: { type: 'all_group_chats' } });
+    } catch (err) {
+      console.error('Не удалось выставить список команд бота', err);
+    }
+  }
+
   async handleMessage(msg) {
     const text = (msg.text || '').trim();
     const [firstToken = ''] = text.split(/\s+/, 1);
     const isLinkCommand = /^\/link(@[A-Za-z0-9_]+)?$/i.test(firstToken);
+    const isBookingCommand = /^\/booking(@[A-Za-z0-9_]+)?$/i.test(firstToken);
 
     if (isLinkCommand) {
       await this.handleLinkCommand(msg);
+      return;
+    }
+    if (isBookingCommand) {
+      await this.handleBookingCommand(msg);
       return;
     }
 
@@ -135,6 +152,33 @@ class TelegramBotManager {
   async saveChatId(chatId) {
     this.chatId = String(chatId);
     await run('UPDATE settings SET chat_id = ? WHERE id = 1', [encrypt(this.chatId)]);
+  }
+
+  async handleBookingCommand(msg) {
+    const today = new Date();
+    const date = today.toLocaleDateString('ru-RU');
+    const bookings = await all(
+      `SELECT time, date, [table], name, person, phone
+       FROM tables
+       WHERE date = ?
+       ORDER BY time ASC`,
+      [date]
+    );
+
+    if (!bookings.length) {
+      await this.bot.sendMessage(msg.chat.id, `Брони на сегодня (${date}) отсутствуют.`);
+      return;
+    }
+
+    const lines = bookings.map((item, idx) => {
+      const time = item.time || '-';
+      const name = item.name || '-';
+      const phone = item.phone || '-';
+      return `${idx + 1}. ${time} | ${name} | ${phone}`;
+    });
+
+    const text = [`Брони на сегодня (${date}):`, ...lines].join('\n');
+    await this.bot.sendMessage(msg.chat.id, text);
   }
 }
 
