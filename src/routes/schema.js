@@ -2,7 +2,7 @@ const { get, run } = require('../db');
 const { auth, requireAdmin } = require('../middleware/auth');
 
 function registerSchemaRoutes(app, { emitSchemaUpdated }) {
-  app.get('/schema', auth, requireAdmin, async (_req, res) => {
+  app.get('/schema', auth, async (_req, res) => {
     try {
       const row = await get('SELECT payload, updated_at FROM schema_store WHERE id = 1');
       if (!row) {
