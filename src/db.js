@@ -82,6 +82,18 @@ async function init() {
     await run(`UPDATE settings SET admin_chat = NULL WHERE id = 1`);
   }
 
+  await run(
+    `CREATE TABLE IF NOT EXISTS telegram_link_codes (
+      code TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      chat_id TEXT
+    )`
+  );
+
+  await run(`CREATE INDEX IF NOT EXISTS idx_link_codes_expires_at ON telegram_link_codes(expires_at)`);
+
   await run(`CREATE INDEX IF NOT EXISTS idx_tables_date ON tables(date)`);
   await run(`INSERT OR IGNORE INTO settings (id, bot_id, chat_id, admin_chat) VALUES (1, NULL, NULL, NULL)`);
 }

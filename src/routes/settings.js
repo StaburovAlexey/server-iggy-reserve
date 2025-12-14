@@ -1,6 +1,7 @@
 const { get, run } = require('../db');
 const { auth, requireAdmin } = require('../middleware/auth');
 const { encrypt, decrypt } = require('../utils/encryption');
+const { createLinkCode, CODE_TTL_MINUTES } = require('../services/link-codes');
 
 function registerSettingsRoutes(app, { botManager }) {
   app.post('/settings/add', auth, requireAdmin, async (req, res) => {
@@ -22,6 +23,21 @@ function registerSettingsRoutes(app, { botManager }) {
       };
       await botManager.refresh(response.bot_id, response.admin_chat, response.chat_id);
       return res.json({ settings: response });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  app.post('/settings/link-code', auth, requireAdmin, async (_req, res) => {
+    try {
+      const row = await get('SELECT bot_id FROM settings WHERE id = 1');
+      const botToken = row?.bot_id ? decrypt(row.bot_id) : null;
+      if (!botToken) {
+        return res.status(400).json({ error: 'Configure bot_id before creating a link code' });
+      }
+      const { code, expires_at } = await createLinkCode();
+      return res.json({ code, expires_at, ttl_minutes: CODE_TTL_MINUTES });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Server error' });
