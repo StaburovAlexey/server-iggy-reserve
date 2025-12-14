@@ -1,6 +1,8 @@
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -11,11 +13,14 @@ const crypto = require('crypto');
 const cron = require('node-cron');
 const archiver = require('archiver');
 const TelegramBot = require('node-telegram-bot-api');
+const { Server } = require('socket.io');
 const { init, run, get, all, dbFile } = require('./db');
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
+const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is required');
@@ -47,6 +52,12 @@ const corsAllowedList = (process.env.CORS_ALLOWED_IPS || '')
   .filter(Boolean);
 const allowedCorsHosts = new Set(corsAllowedList.map(extractHostname));
 
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  const hostname = extractHostname(origin);
+  return allowedCorsHosts.has(hostname);
+}
+
 if (isProd && allowedCorsHosts.size === 0) {
   throw new Error('CORS_ALLOWED_IPS is required when running in production mode (start:prod)');
 }
@@ -54,11 +65,7 @@ if (isProd && allowedCorsHosts.size === 0) {
 const corsOptions = isProd
   ? {
       origin: (origin, callback) => {
-        if (!origin) {
-          return callback(null, true);
-        }
-        const hostname = extractHostname(origin);
-        if (allowedCorsHosts.has(hostname)) {
+        if (isOriginAllowed(origin)) {
           return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
@@ -69,6 +76,8 @@ const corsOptions = isProd
 const app = express();
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
+
+let io;
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -226,6 +235,39 @@ class TelegramBotManager {
 
 const botManager = new TelegramBotManager();
 
+function emitSchemaUpdated(schema, updatedAt) {
+  if (!io) return;
+  io.emit('schema_updated', { schema, updated_at: updatedAt });
+}
+
+function emitTableCreated(table) {
+  if (!io) return;
+  io.emit('table_created', table);
+}
+
+function emitTableDeleted(id) {
+  if (!io) return;
+  io.emit('table_deleted', { id });
+}
+
+function createServer() {
+  if (HTTPS_KEY_PATH || HTTPS_CERT_PATH) {
+    if (!HTTPS_KEY_PATH || !HTTPS_CERT_PATH) {
+      throw new Error('Both HTTPS_KEY_PATH and HTTPS_CERT_PATH must be set to enable HTTPS');
+    }
+    const keyPath = path.resolve(HTTPS_KEY_PATH);
+    const certPath = path.resolve(HTTPS_CERT_PATH);
+    const httpsOptions = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+    console.log(`[BOOT] HTTPS enabled with cert: ${certPath}`);
+    return https.createServer(httpsOptions, app);
+  }
+  console.log('[BOOT] HTTPS disabled, using HTTP');
+  return http.createServer(app);
+}
+
 app.get('/', (_req, res) => {
   res.json({ status: 'ok' });
 });
@@ -326,8 +368,9 @@ app.post('/tables/add', auth, async (req, res) => {
 Имя: ${created.name || '-'}
 Гостей: ${created.person ?? '-'}
 Телефон: ${created.phone || '-'}`;
-    await botManager.sendMessage(null, notifyText);
-    return res.status(201).json(created);
+      await botManager.sendMessage(null, notifyText);
+      emitTableCreated(created);
+      return res.status(201).json(created);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Server error' });
@@ -341,6 +384,7 @@ app.delete('/tables/delete/:id', auth, async (req, res) => {
     if (!result.changes) {
       return res.status(404).json({ error: 'Not found' });
     }
+    emitTableDeleted(Number(id));
     return res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -426,6 +470,7 @@ app.post('/schema', auth, requireAdmin, async (req, res) => {
        ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
       [serialized, updatedAt]
     );
+    emitSchemaUpdated(schema, updatedAt);
     return res.json({ schema, updated_at: updatedAt });
   } catch (err) {
     console.error(err);
@@ -578,7 +623,28 @@ async function start() {
   const corsMode = isProd
     ? `Restricted CORS to hosts: ${Array.from(allowedCorsHosts).join(', ')}`
     : 'CORS open to all origins';
-  app.listen(PORT, () => {
+  const server = createServer();
+  io = new Server(server, {
+    cors: isProd
+      ? {
+          origin: (origin, callback) => {
+            if (isOriginAllowed(origin)) {
+              return callback(null, true);
+            }
+            return callback(new Error('Not allowed by CORS'));
+          },
+        }
+      : { origin: '*' },
+  });
+
+  io.on('connection', (socket) => {
+    console.log('Socket connected', socket.id);
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected', socket.id);
+    });
+  });
+
+  server.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}. ${corsMode}`);
   });
 }
