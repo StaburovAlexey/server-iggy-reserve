@@ -66,6 +66,14 @@ async function init() {
     )`
   );
 
+  await run(
+    `CREATE TABLE IF NOT EXISTS schema_store (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`
+  );
+
   // Ensure admin_chat column exists for older databases.
   const columns = await all(`PRAGMA table_info(settings)`);
   const hasAdminChat = columns.some((col) => col.name === 'admin_chat');
