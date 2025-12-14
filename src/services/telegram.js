@@ -1,6 +1,7 @@
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
 const { run, all } = require('../db');
+const { serverUrl } = require('../config/env');
 const { encrypt } = require('../utils/encryption');
 const { consumeLinkCode } = require('./link-codes');
 
@@ -169,8 +170,13 @@ class TelegramBotManager {
       [date]
     );
 
+    const cleanUrl = serverUrl?.replace(/\/api\/?$/i, '');
+    const linkLine = cleanUrl ? `Открыть приложение: ${cleanUrl}` : null;
+
     if (!bookings.length) {
-      await this.bot.sendMessage(msg.chat.id, `Брони на сегодня (${date}) отсутствуют.`);
+      const parts = [`Брони на сегодня (${date}) отсутствуют.`];
+      if (linkLine) parts.push(linkLine);
+      await this.bot.sendMessage(msg.chat.id, parts.join('\n'));
       return;
     }
 
@@ -181,8 +187,9 @@ class TelegramBotManager {
       return `${idx + 1}. ${time} | ${name} | ${phone}`;
     });
 
-    const text = [`Брони на сегодня (${date}):`, ...lines].join('\n');
-    await this.bot.sendMessage(msg.chat.id, text);
+    const textParts = [`Брони на сегодня (${date}):`, ...lines];
+    if (linkLine) textParts.push(linkLine);
+    await this.bot.sendMessage(msg.chat.id, textParts.join('\n'));
   }
 }
 
