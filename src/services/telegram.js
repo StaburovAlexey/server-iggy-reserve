@@ -156,7 +156,11 @@ class TelegramBotManager {
 
   async handleBookingCommand(msg) {
     const today = new Date();
-    const date = today.toLocaleDateString('ru-RU');
+    const date = new Intl.DateTimeFormat('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+    }).format(today);
     const bookings = await all(
       `SELECT time, date, [table], name, person, phone
        FROM tables
