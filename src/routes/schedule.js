@@ -27,17 +27,19 @@ function normalizeGroup(list = []) {
   if (!Array.isArray(list)) return [];
   return list
     .map((item) => {
-      if (!item) return null;
-      const name = typeof item.name === 'string' ? item.name.trim() : '';
-      const hasName = Boolean(name);
-      const id = item.id ? String(item.id).trim() : '';
-      if (!hasName && !id) return null;
-      const normalized = {};
-      if (id) normalized.id = id;
-      if (hasName) normalized.name = name;
-      return normalized;
+      const uuid = extractUuid(item);
+      if (!uuid) return null;
+      return { uuid };
     })
     .filter(Boolean);
+}
+
+function extractUuid(item) {
+  if (!item) return null;
+  const raw = typeof item === 'string' ? item : item.uuid;
+  if (!raw) return null;
+  const cleaned = String(raw).trim();
+  return cleaned || null;
 }
 
 function parsePayload(payload) {
@@ -53,14 +55,42 @@ function parsePayload(payload) {
   return payload;
 }
 
-function formatEntry(row) {
-  const data = parsePayload(row.payload);
-  return {
-    date: row.date,
-    opening: normalizeGroup(data.opening),
-    closing: normalizeGroup(data.closing),
-    helpers: normalizeGroup(data.helpers),
-  };
+function collectUserIds(rowsWithPayload) {
+  const uuids = new Set();
+  rowsWithPayload.forEach(({ parsed }) => {
+    ['opening', 'closing', 'helpers'].forEach((key) => {
+      (parsed?.[key] || []).forEach((item) => {
+        const uuid = extractUuid(item);
+        if (uuid) uuids.add(uuid);
+      });
+    });
+  });
+  return Array.from(uuids);
+}
+
+async function buildUserMap(rowsWithPayload) {
+  const uuids = collectUserIds(rowsWithPayload);
+  if (uuids.length === 0) return new Map();
+  const placeholders = uuids.map(() => '?').join(',');
+  const users = await all(
+    `SELECT uuid, name, login, avatar FROM users WHERE uuid IN (${placeholders})`,
+    uuids
+  );
+  return new Map(users.map((user) => [user.uuid, user]));
+}
+
+function mapGroupWithUsers(list = [], userMap) {
+  return normalizeGroup(list)
+    .map((entry) => {
+      const uuid = extractUuid(entry);
+      const user = uuid ? userMap.get(uuid) : null;
+      const avatar = user?.avatar || null;
+      const name = user?.name || null;
+      const login = user?.login || null;
+      if (!uuid && !name && !login && !avatar) return null;
+      return { uuid: uuid || null, name, login, avatar };
+    })
+    .filter(Boolean);
 }
 
 function registerScheduleRoutes(app) {
@@ -76,7 +106,18 @@ function registerScheduleRoutes(app) {
       } else {
         rows = await all('SELECT date, payload FROM schedule_entries ORDER BY date');
       }
-      return res.json({ items: rows.map(formatEntry) });
+      const rowsWithPayload = rows.map((row) => ({
+        date: row.date,
+        parsed: parsePayload(row.payload),
+      }));
+      const userMap = await buildUserMap(rowsWithPayload);
+      const items = rowsWithPayload.map((row) => ({
+        date: row.date,
+        opening: mapGroupWithUsers(row.parsed.opening, userMap),
+        closing: mapGroupWithUsers(row.parsed.closing, userMap),
+        helpers: mapGroupWithUsers(row.parsed.helpers, userMap),
+      }));
+      return res.json({ items });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Server error' });
@@ -100,7 +141,13 @@ function registerScheduleRoutes(app) {
          ON CONFLICT(date) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
         [dateKey, JSON.stringify(payload), timestamp]
       );
-      return res.json({ date: dateKey, ...payload });
+      const userMap = await buildUserMap([{ parsed: payload }]);
+      return res.json({
+        date: dateKey,
+        opening: mapGroupWithUsers(payload.opening, userMap),
+        closing: mapGroupWithUsers(payload.closing, userMap),
+        helpers: mapGroupWithUsers(payload.helpers, userMap),
+      });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Server error' });
