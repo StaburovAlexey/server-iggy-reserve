@@ -12,9 +12,14 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+function stripApiSegment(value) {
+  if (!value) return value;
+  return value.replace(/\/+$/u, '');
+}
+
 function buildInviteLink(token, req) {
   const base = serverUrl || `${req.protocol}://${req.get('host')}`;
-  const normalized = base.endsWith('/') ? base.slice(0, -1) : base;
+  const normalized = stripApiSegment(base) || base;
   return `${normalized}/invite/confirm?token=${encodeURIComponent(token)}`;
 }
 

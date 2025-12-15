@@ -170,7 +170,7 @@ class TelegramBotManager {
       [date]
     );
 
-    const cleanUrl = serverUrl?.replace(/\/api\/?$/i, '');
+    const cleanUrl = serverUrl
     const replyOptions = cleanUrl
       ? {
           reply_markup: {
