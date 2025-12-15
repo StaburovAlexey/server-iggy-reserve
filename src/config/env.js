@@ -5,6 +5,13 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
+const EMAIL_HOST = process.env.EMAIL_HOST;
+const EMAIL_PORT = process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : 587;
+const EMAIL_SECURE = process.env.EMAIL_SECURE === 'true';
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
+const EMAIL_FROM = process.env.EMAIL_FROM;
+const INVITE_EXPIRATION_HOURS = Number(process.env.INVITE_EXPIRATION_HOURS) || 48;
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is required');
@@ -46,4 +53,11 @@ module.exports = {
   serverUrl: process.env.SERVER_URL,
   adminLogin: process.env.ADMIN_LOGIN,
   adminPassword: process.env.ADMIN_PASSWORD,
+  EMAIL_HOST,
+  EMAIL_PORT,
+  EMAIL_SECURE,
+  EMAIL_USER,
+  EMAIL_PASSWORD,
+  EMAIL_FROM,
+  INVITE_EXPIRATION_HOURS,
 };

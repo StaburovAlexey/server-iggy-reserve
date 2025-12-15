@@ -95,6 +95,19 @@ async function init() {
     )`
   );
 
+  await run(
+    `CREATE TABLE IF NOT EXISTS invitation_tokens (
+      token_hash TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('admin','user')),
+      name TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      status TEXT NOT NULL CHECK(status IN ('pending','used'))
+    )`
+  );
+
   // Ensure admin_chat column exists for older databases.
   const columns = await all(`PRAGMA table_info(settings)`);
   const hasAdminChat = columns.some((col) => col.name === 'admin_chat');

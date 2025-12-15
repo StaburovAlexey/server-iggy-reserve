@@ -32,6 +32,7 @@ const { registerUploadRoutes } = require('./routes/upload');
 const { registerUserRoutes } = require('./routes/users');
 const { registerScheduleRoutes } = require('./routes/schedule');
 const { registerBackupRoutes } = require('./routes/backup');
+const { registerInvitationRoutes } = require('./routes/invitations');
 
 const app = express();
 
@@ -101,6 +102,7 @@ function registerRoutes() {
   registerUploadRoutes(app, serverUrl);
   registerScheduleRoutes(app);
   registerBackupRoutes(app);
+  registerInvitationRoutes(app);
   registerUserRoutes(app);
 }
 
