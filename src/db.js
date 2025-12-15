@@ -103,9 +103,20 @@ async function init() {
       expires_at TEXT NOT NULL,
       approved_at TEXT,
       user_uuid TEXT,
+      email TEXT,
+      role TEXT DEFAULT 'user',
       FOREIGN KEY(user_uuid) REFERENCES users(uuid)
     )`
   );
+
+  const magicColumns = await all(`PRAGMA table_info(magic_links)`);
+  if (!magicColumns.some((col) => col.name === 'email')) {
+    await run(`ALTER TABLE magic_links ADD COLUMN email TEXT`);
+  }
+  if (!magicColumns.some((col) => col.name === 'role')) {
+    await run(`ALTER TABLE magic_links ADD COLUMN role TEXT`);
+    await run(`UPDATE magic_links SET role = 'user' WHERE role IS NULL`);
+  }
 
   // Ensure admin_chat column exists for older databases.
   const columns = await all(`PRAGMA table_info(settings)`);
