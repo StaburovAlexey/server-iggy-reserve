@@ -96,15 +96,14 @@ async function init() {
   );
 
   await run(
-    `CREATE TABLE IF NOT EXISTS invitation_tokens (
+    `CREATE TABLE IF NOT EXISTS magic_links (
       token_hash TEXT PRIMARY KEY,
-      email TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin','user')),
-      name TEXT,
+      status TEXT NOT NULL CHECK(status IN ('pending','approved')),
       created_at TEXT NOT NULL,
       expires_at TEXT NOT NULL,
-      used_at TEXT,
-      status TEXT NOT NULL CHECK(status IN ('pending','used'))
+      approved_at TEXT,
+      user_uuid TEXT,
+      FOREIGN KEY(user_uuid) REFERENCES users(uuid)
     )`
   );
 

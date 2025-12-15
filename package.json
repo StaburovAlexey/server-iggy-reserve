@@ -22,7 +22,6 @@
     "node-cron": "^3.0.3",
     "node-telegram-bot-api": "^0.66.0",
     "unzipper": "^0.10.11",
-    "nodemailer": "^6.9.4",
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7",
     "uuid": "^13.0.0"
