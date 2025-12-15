@@ -40,7 +40,7 @@ function ensureRole(value) {
 
 function createMagicResponse(token, expiresAt, req) {
   const baseUrl = buildBaseUrl(req);
-  const magicLink = `${baseUrl}/magic/confirm?token=${encodeURIComponent(token)}`;
+  const magicLink = `${baseUrl}/#/magic/confirm?token=${encodeURIComponent(token)}`;
   return {
     token,
     magic_link: magicLink,
