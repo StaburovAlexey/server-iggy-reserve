@@ -31,6 +31,7 @@ const { registerSettingsRoutes } = require('./routes/settings');
 const { registerUploadRoutes } = require('./routes/upload');
 const { registerUserRoutes } = require('./routes/users');
 const { registerScheduleRoutes } = require('./routes/schedule');
+const { registerBackupRoutes } = require('./routes/backup');
 
 const app = express();
 
@@ -99,6 +100,7 @@ function registerRoutes() {
   registerSettingsRoutes(app, { botManager });
   registerUploadRoutes(app, serverUrl);
   registerScheduleRoutes(app);
+  registerBackupRoutes(app);
   registerUserRoutes(app);
 }
 

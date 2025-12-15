@@ -5,7 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const dbFile = path.join(__dirname, '..', 'data', 'database.sqlite');
 fs.mkdirSync(path.dirname(dbFile), { recursive: true });
 
-const db = new sqlite3.Database(dbFile);
+let db = new sqlite3.Database(dbFile);
 
 const run = (sql, params = []) =>
   new Promise((resolve, reject) => {
@@ -30,6 +30,19 @@ const all = (sql, params = []) =>
       resolve(rows);
     });
   });
+
+function reopenDatabase() {
+  db = new sqlite3.Database(dbFile);
+}
+
+function closeDatabase() {
+  return new Promise((resolve, reject) => {
+    db.close((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+}
 
 async function init() {
   await run(
@@ -106,11 +119,20 @@ async function init() {
   await run(`INSERT OR IGNORE INTO settings (id, bot_id, chat_id, admin_chat) VALUES (1, NULL, NULL, NULL)`);
 }
 
-module.exports = {
-  db,
+const exportsObj = {
   run,
   get,
   all,
   init,
   dbFile,
+  reopenDatabase,
+  closeDatabase,
 };
+
+Object.defineProperty(exportsObj, 'db', {
+  get() {
+    return db;
+  },
+});
+
+module.exports = exportsObj;
