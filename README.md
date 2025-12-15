@@ -111,7 +111,7 @@
 - При первом запуске с заполненными `ADMIN_LOGIN` и `ADMIN_PASSWORD` автоматически создаётся админ.
 
 ## QR magic-link
-- `POST /magic-links` требует авторизации администратора и создаёт ссылку `{ token, magic_link, expires_at }` по адресу, который вы покажете в виде QR на ПК.
-- Пользователь без аккаунта сканирует QR, вводит email и пароль в мобильной версии, и вызывает `POST /magic-links/:token/confirm` с телом `{ email, password, name? }`. Если email уже зарегистрирован — проверяется пароль, иначе создаётся новый пользователь. В ответ приходит `{ success: true, token, user }`, а ссылка помечается как одобренная.
-- ПК-часть опрашивает `GET /magic-links/:token`. Пока `status = pending`, ждёт; после `status = approved` возвращается JWT и профиль пользователя.
-- `MAGIC_LINK_TTL_MINUTES` в `.env` задаёт, сколько минут ссылка остаётся валидной (по умолчанию 5).
+- `POST /magic-links` requires admin access and creates a one-time link for a specific email (`{ email, role? }`). The response returns `{ token, magic_link, expires_at }`, and the desktop client should render `magic_link` as a QR code.
+- The user scans the QR, opens it on a phone, enters their `email`, `password`, and optional `name`, and calls `POST /magic-links/:token/confirm`. If the email already exists, the password is verified; otherwise a new user is created. The endpoint responds `{ success: true, token, user }`.
+- The desktop keeps polling `GET /magic-links/:token`. When the link is approved, it returns `{ status: 'approved', token, user, expires_at }` and deletes the link so it cannot be reused to reset credentials.
+- `MAGIC_LINK_TTL_MINUTES` in `.env` controls how long the link stays valid before confirmation (default 5 minutes).

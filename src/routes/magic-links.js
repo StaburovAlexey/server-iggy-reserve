@@ -103,6 +103,7 @@ async function fetchMagicLink(req, res) {
     return res.status(404).json({ status: 'invalid' });
   }
   const authToken = generateJwt(user);
+  await run('DELETE FROM magic_links WHERE token_hash = ?', [tokenHash]);
   return res.json({
     status: 'approved',
     token: authToken,
