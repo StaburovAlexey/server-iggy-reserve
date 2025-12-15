@@ -66,10 +66,6 @@ async function createMagicLink(req, res) {
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
-  const existing = await get('SELECT uuid FROM users WHERE login = ?', [email]);
-  if (existing) {
-    return res.status(400).json({ error: 'User with this email already exists' });
-  }
   const token = crypto.randomBytes(24).toString('hex');
   const tokenHash = hashToken(token);
   const now = new Date().toISOString();
@@ -142,15 +138,17 @@ async function confirmMagicLink(req, res) {
   if (isExpired(row)) {
     return res.status(410).json({ error: 'Magic link has expired' });
   }
+  const hashed = await bcrypt.hash(password, 10);
   let user = await get('SELECT * FROM users WHERE login = ?', [email]);
   if (user) {
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const displayName = name?.trim() || user.name;
+    await run(
+      'UPDATE users SET password = ?, name = ? WHERE uuid = ?',
+      [hashed, displayName, user.uuid]
+    );
+    user = await get('SELECT * FROM users WHERE uuid = ?', [user.uuid]);
   } else {
     const uuid = uuidv4();
-    const hashed = await bcrypt.hash(password, 10);
     const displayName = name?.trim() || email.split('@')[0];
     await run(
       'INSERT INTO users (uuid, name, login, password, avatar, role) VALUES (?, ?, ?, ?, ?, ?)',
