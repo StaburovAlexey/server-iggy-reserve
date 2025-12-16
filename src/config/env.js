@@ -1,4 +1,16 @@
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
+
+const argvHasProd = process.argv.includes('--prod');
+const resolvedNodeEnv = process.env.NODE_ENV || (argvHasProd ? 'production' : 'development');
+const envPath = path.resolve(process.cwd(), `.env.${resolvedNodeEnv}`);
+
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -15,7 +27,7 @@ if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
   throw new Error('ENCRYPTION_KEY must be a 64 char hex string (32 bytes)');
 }
 
-const isProd = process.argv.includes('--prod') || process.env.NODE_ENV === 'production';
+const isProd = argvHasProd || resolvedNodeEnv === 'production';
 
 function extractHostname(value) {
   try {
