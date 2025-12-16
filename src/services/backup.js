@@ -38,8 +38,6 @@ async function createBackupArchive() {
   });
 }
 
-<<<<<<< HEAD
-=======
 async function extractDatabaseFromArchive(zipPath, targetDatabasePath) {
   if (!fs.existsSync(zipPath)) {
     throw new Error('Backup archive not found');
@@ -58,7 +56,6 @@ async function extractDatabaseFromArchive(zipPath, targetDatabasePath) {
   });
 }
 
->>>>>>> dev
 function setupBackupSchedule(botManager) {
   // Server local time at 00:00 and 08:00 every day
   cron.schedule('0 0,8 * * *', () => {
@@ -85,8 +82,5 @@ module.exports = {
   createBackupArchive,
   setupBackupSchedule,
   sendScheduledBackup,
-<<<<<<< HEAD
-=======
   extractDatabaseFromArchive,
->>>>>>> dev
 };
