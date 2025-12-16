@@ -47,8 +47,5 @@ module.exports = {
   serverUrl: process.env.SERVER_URL,
   adminLogin: process.env.ADMIN_LOGIN,
   adminPassword: process.env.ADMIN_PASSWORD,
-<<<<<<< HEAD
-=======
   MAGIC_LINK_TTL_MINUTES,
->>>>>>> dev
 };
