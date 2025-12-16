@@ -32,6 +32,7 @@
 - `DELETE /tables/delete/:id` — удалить бронирование по id; авторизованные.
 - `GET /settings` — только admin, возвращает расшифрованные `bot_id`, `chat_id`, `admin_chat`.
 - `POST /settings/add` — только admin, обновляет настройки (`bot_id`, `chat_id`, `admin_chat`, значения шифруются). Бот перезапускается с новым `bot_id`.
+- `GET /schema` и `POST /schema` — только admin; чтение и сохранение JSON-схемы, тело запроса: `{ "schema": <любой JSON> }`.
 - `POST /upload` — авторизованные; `multipart/form-data` поле `file` (jpeg/png ≤ 2 МБ). Ответ: `{ url }`.
 
 ## Шаги деплоя на VPS (Ubuntu)
