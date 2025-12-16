@@ -12,7 +12,7 @@ function registerUploadRoutes(app, serverUrl) {
         return res.status(400).json({ error: 'File is required' });
       }
       const host = serverUrl || `${req.protocol}://${req.get('host')}`;
-      const url = `${host}/uploads/${req.file.filename}`;
+      const url = `${host}/api/uploads/${req.file.filename}`;
       return res.status(201).json({ url });
     });
   });

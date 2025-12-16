@@ -4,6 +4,7 @@ const archiver = require('archiver');
 const cron = require('node-cron');
 const { backupDir, uploadsDir } = require('../config/paths');
 const { dbFile } = require('../db');
+const unzipper = require('unzipper');
 
 function formatTimestampForBackup(date = new Date()) {
   const pad = (n) => String(n).padStart(2, '0');
@@ -37,6 +38,27 @@ async function createBackupArchive() {
   });
 }
 
+<<<<<<< HEAD
+=======
+async function extractDatabaseFromArchive(zipPath, targetDatabasePath) {
+  if (!fs.existsSync(zipPath)) {
+    throw new Error('Backup archive not found');
+  }
+  const directory = await unzipper.Open.file(zipPath);
+  const entry = directory.files.find((file) => file.path === 'database.sqlite');
+  if (!entry) {
+    throw new Error('Backup archive does not include database.sqlite');
+  }
+  await new Promise((resolve, reject) => {
+    entry
+      .stream()
+      .pipe(fs.createWriteStream(targetDatabasePath))
+      .on('finish', resolve)
+      .on('error', reject);
+  });
+}
+
+>>>>>>> dev
 function setupBackupSchedule(botManager) {
   // Server local time at 00:00 and 08:00 every day
   cron.schedule('0 0,8 * * *', () => {
@@ -63,4 +85,8 @@ module.exports = {
   createBackupArchive,
   setupBackupSchedule,
   sendScheduledBackup,
+<<<<<<< HEAD
+=======
+  extractDatabaseFromArchive,
+>>>>>>> dev
 };

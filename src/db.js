@@ -5,7 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const dbFile = path.join(__dirname, '..', 'data', 'database.sqlite');
 fs.mkdirSync(path.dirname(dbFile), { recursive: true });
 
-const db = new sqlite3.Database(dbFile);
+let db = new sqlite3.Database(dbFile);
 
 const run = (sql, params = []) =>
   new Promise((resolve, reject) => {
@@ -30,6 +30,19 @@ const all = (sql, params = []) =>
       resolve(rows);
     });
   });
+
+function reopenDatabase() {
+  db = new sqlite3.Database(dbFile);
+}
+
+function closeDatabase() {
+  return new Promise((resolve, reject) => {
+    db.close((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+}
 
 async function init() {
   await run(
@@ -74,6 +87,37 @@ async function init() {
     )`
   );
 
+  await run(
+    `CREATE TABLE IF NOT EXISTS schedule_entries (
+      date TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS magic_links (
+      token_hash TEXT PRIMARY KEY,
+      status TEXT NOT NULL CHECK(status IN ('pending','approved')),
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      approved_at TEXT,
+      user_uuid TEXT,
+      email TEXT,
+      role TEXT DEFAULT 'user',
+      FOREIGN KEY(user_uuid) REFERENCES users(uuid)
+    )`
+  );
+
+  const magicColumns = await all(`PRAGMA table_info(magic_links)`);
+  if (!magicColumns.some((col) => col.name === 'email')) {
+    await run(`ALTER TABLE magic_links ADD COLUMN email TEXT`);
+  }
+  if (!magicColumns.some((col) => col.name === 'role')) {
+    await run(`ALTER TABLE magic_links ADD COLUMN role TEXT`);
+    await run(`UPDATE magic_links SET role = 'user' WHERE role IS NULL`);
+  }
+
   // Ensure admin_chat column exists for older databases.
   const columns = await all(`PRAGMA table_info(settings)`);
   const hasAdminChat = columns.some((col) => col.name === 'admin_chat');
@@ -98,11 +142,20 @@ async function init() {
   await run(`INSERT OR IGNORE INTO settings (id, bot_id, chat_id, admin_chat) VALUES (1, NULL, NULL, NULL)`);
 }
 
-module.exports = {
-  db,
+const exportsObj = {
   run,
   get,
   all,
   init,
   dbFile,
+  reopenDatabase,
+  closeDatabase,
 };
+
+Object.defineProperty(exportsObj, 'db', {
+  get() {
+    return db;
+  },
+});
+
+module.exports = exportsObj;

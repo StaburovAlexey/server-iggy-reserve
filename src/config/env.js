@@ -5,6 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
+const MAGIC_LINK_TTL_MINUTES = Number(process.env.MAGIC_LINK_TTL_MINUTES) || 5;
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is required');
@@ -46,4 +47,8 @@ module.exports = {
   serverUrl: process.env.SERVER_URL,
   adminLogin: process.env.ADMIN_LOGIN,
   adminPassword: process.env.ADMIN_PASSWORD,
+<<<<<<< HEAD
+=======
+  MAGIC_LINK_TTL_MINUTES,
+>>>>>>> dev
 };
